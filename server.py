@@ -149,3 +149,44 @@ async def list_files_resource() -> dict:
         return {
             "error": f"Error listing files: {e}"
         }
+    
+# Prompt
+@mcp.prompt
+async def code_review(file_path: str, ctx: Context) -> str:
+    """
+    Generate a prompt for code review and quality evaluation.
+    Reads a code file and generates a prompt for Claude to perform a comprehensive code review.
+    Args:
+        file_path: Relative path to the code file to review
+        ctx: MCP context for logging and communication
+    Returns:
+        Formatted prompt string for code review
+    Raises:
+        FileNotFoundError: If the specified file doesn't exist
+    """
+    try:
+        path = get_path(file_path)
+
+        if not path.exists() or not path.is_file():
+            error_msg = f"Error: {file_path} is not a valid file"
+            await ctx.warning(error_msg)
+            raise FileNotFoundError(error_msg)
+
+        current_code = path.read_text(encoding='utf-8').strip()
+        language = path.suffix.lower()
+
+        prompt = f"""You are an expert code editor. Review the following code quality.
+        File: {file_path}
+        Language (file suffix): {language or "unknown"}
+        Current code:
+        '''
+        {current_code}
+        '''
+        Provide a comprehensive evaluation of the code:
+        """.strip()
+        await ctx.info("Successfully returned prompt")
+        return prompt
+
+    except Exception as e:
+        await ctx.error(f"Error preparing code review prompt: {e}")
+        raise
