@@ -9,16 +9,16 @@ BASE_DIR = Path.cwd()
 
 class DocumentGeneratorSchema(BaseModel):
     """Pydantic model for documentation filename schema.
-    
+
     Used in elicitation to capture user input for documentation file names.
-    
+
     Attributes:
     file_path: Path of the file we want to generate document on
     name: The name of the documentation file to create
     """
     file_path: str
     name: str
-    
+
 mcp = FastMCP("File Operations MCP Server")
 
 def get_path(relative_path: str) -> Path:
@@ -149,7 +149,7 @@ async def list_files_resource() -> dict:
         return {
             "error": f"Error listing files: {e}"
         }
-    
+
 # Prompt
 @mcp.prompt
 async def code_review(file_path: str, ctx: Context) -> str:
@@ -190,3 +190,17 @@ async def code_review(file_path: str, ctx: Context) -> str:
     except Exception as e:
         await ctx.error(f"Error preparing code review prompt: {e}")
         raise
+
+@mcp.prompt
+async def documentation_generator(ctx: Context) -> str:
+    """
+    Generate a prompt for creating code documentation.
+    Reads a code file, elicits a documentation filename from the user, and generates a prompt for Claude to create comprehensive documentation.
+    Args:
+        file_path: Relative path to the code file to document
+        ctx: MCP context for logging and elicitation
+    Returns:
+        Formatted prompt string for documentation generation
+    Raises:
+        FileNotFoundError: If the specified file doesn't exist
+    """
