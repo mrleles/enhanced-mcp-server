@@ -110,3 +110,48 @@ class MCPClient:
                 print("Tools have changed - might want to refresh tool cache")
             elif method == "notifications/resources/list_changed":
                 print("Resources have changed")
+
+# Fetching from MCP server
+async def _get_tools(self) -> List[Dict[str, Any]]:
+    """Retrieve available tools from the MCP server.
+    Fetches the list of tools exposed by the server and formats them for use with the Claude API.
+    Returns:
+    List of tool definitions with name, description, and input schema
+    """
+    tools_response = await self.client.list_tools()
+
+    tools = [
+        {
+            "name": tool.name,
+            "description": tool.description or "MCP Tool",
+            "input_schema": tool.inputSchema,
+        }
+        for tool in tools_response
+    ]
+
+    return tools
+
+async def _get_prompts(self):
+    """Retrieve available prompts from the MCP server.
+    Returns:
+        PromptsResponse containing available prompt templates
+    """
+
+    prompts_response = await self.client.list_prompts()
+    return prompts_response
+
+async def _get_resources(self):
+    """Retrieve available resources from the MCP server.
+    Returns:
+        ResourcesResponse containing available resources
+    """
+    resources_response = await self.client.list_resources()
+    return resources_response
+
+async def _get_resource_templates():
+    """Retrieve available resource templates from the MCP server.
+    Returns:
+        ResourceTemplatesResponse containing available resource templates
+    """
+    resource_templates_response = await self.client.list_resource_templates()
+    return resource_templates_response
