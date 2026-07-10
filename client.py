@@ -155,3 +155,109 @@ async def _get_resource_templates():
     """
     resource_templates_response = await self.client.list_resource_templates()
     return resource_templates_response
+
+async def process_query(self, query: str) -> str:
+    """Process a query using Claude with access to MCP server tools.
+    Implements an agentic loop where Claude can use MCP tools to answer the query. The loop continues until Claude provides a final response without requesting further tool use.
+    Args:
+        query: The user's query to process
+    Returns:
+        The final text response from Claude
+    """
+
+    messages = [
+        {
+            "role": "user",
+            "content": query
+        }
+    ]
+
+    available_tools = await self._get_tools()
+
+    response = await self.anthropic.messages.create(
+        model=MODEL_ID,
+        max_tokens=4096,
+        messages=messages,
+        tools=available_tools
+    )
+
+    while response.stop_reason == "tool_use":
+        messages.append({
+            "role": "assistant",
+            "content": response.content
+        })
+
+        tool_results = []
+        for content in response.content:
+            if content.type == 'tool_use':
+                tool_name = content.name
+                tool_args = content.input
+
+                try:
+                    result = await self.client.call_tool(tool_name, tool_args)
+
+                    if isinstance(result.content, list):
+                        result_text = "\n".join([
+                            c.text if hasattr(c, 'text') else str(c)
+                            for c in result.content
+                        ])
+                    else:
+                        result_text = result.content
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": content.id,
+                        "content": result_text
+                    })
+
+                except Exception as e:
+                    print(f"Error calling tool {tool_name}: {e}")
+                    tools_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": content.id,
+                        "content": f"Error: {str(e)}",
+                        "is_error": True
+                    })
+
+            # Add tool results to conversation
+            messages.append({
+                "role": "user",
+                "content": tool_results
+            })
+
+            response = self.anthropic.messages.create(
+                model=MODEL_ID,
+                max_tokens=4096,
+                messages=messages,
+                tools=available_tools
+            )
+
+        final_text = []
+        for content in response.content:
+            if hasattr(content, 'text'):
+                final_text.append(content.text)
+
+        return "\n".join(final_text)
+
+async def converse(self):
+    """Start an interactive conversation mode with Claude.
+    Allows the user to have a multi-turn conversation with Claude, where each query can trigger tool use. Exits when user types 'quit' or 'q'
+    """
+    print("\nEntering conversation mode. Type 'quit' or 'q' to exit.")
+
+    while True:
+        query = input("\nQuery: ").strip()
+
+        if query.lower() in ("quit", "q"):
+            break
+
+        if not query:
+            print("Please enter query")
+            continue
+
+        try:
+            response = await self.process_query(query)
+            print("\n" + response)
+        except Exception as e:
+            print(f"Error processing query: {e}")
+    return
