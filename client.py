@@ -261,3 +261,10 @@ async def converse(self):
         except Exception as e:
             print(f"Error processing query: {e}")
     return
+
+# prompts
+async def prompt(self, prompt_name: str):
+    """Execute a named prompt template from the MCP server.
+    Retrieves a prompt template from the server, collects required arguments from the user, generates the prompt, and processes it with Claude.
+    Args:
+        prompt_name: Name of the prompt
