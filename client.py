@@ -267,4 +267,80 @@ async def prompt(self, prompt_name: str):
     """Execute a named prompt template from the MCP server.
     Retrieves a prompt template from the server, collects required arguments from the user, generates the prompt, and processes it with Claude.
     Args:
-        prompt_name: Name of the prompt
+        prompt_name: Name of the prompt template to execute
+    """
+    try:
+        prompts_response = await self._get_prompts()
+        prompt_obj = next(
+            (p for p in prompts_response if p.name == prompt_name), None
+        )
+
+        if not prompt_obj:
+            print(f"Prompt '{prompt_name}' not found")
+            return
+
+            # Collect arguments for the prompt template
+            arguments = {}
+            if prompt_obj.arguments:
+                for arg in prompt_obj.arguments:
+                    required = "required" if arg.required else "optional"
+                    user_input = input(f"{arg.name} ({required}): ").strip()
+
+                    if not user_input and arg.required:
+                        print(f"Error: {arg.name} is required")
+                        return
+
+                    if user_input:
+                        arguments[arg.name] = user_input
+
+            # Generate the prompt with provided arguments
+            prompt_result = await self.client.get_prompt(prompt_name, arguments=arguments)
+
+            prompt = prompt_result.messages[0].content.text
+
+            response = await self.process_query(prompt)
+            print(response)
+        except Exception as e:
+            print(f"Error: {type(e).__name__}: {e}\n")
+            return
+
+async def read_file(self):
+    """Read the contents of a file via MCP resource.
+    Prompts the user for a file path and retrieves the file content through the MCP server's file resource.
+    """
+    try:
+        file_name = input("Enter file path: ").strip()
+        encoded_file_name = quote(file_name, safe="")
+        resource = await self.client.read_resource(f"file://{encoded_file_name}")
+        file_content = json.loads(resource[0].text)["file_content"]
+
+        print(f"File content:\n {file_content}")
+        return file_content
+    except Exception as e:
+        print(f"Error reading file: {e}")
+
+    def _print_dir_listing(self, items: list[dict]):
+        """Format and print a directory listing.
+        Args:
+            items: List of directory items with metadata(type, size, modified, name)
+        """
+        print("\nDirectory Listing:\n")
+        print(f"{'Type':<10} {'Size':>10} {'Modified':<25} {'Name'}")
+        print("-" * 70)
+        for item in items:
+            type_icon = "📁" if item["type"] == "directory" else "📄"
+            size = f"{item['size']} B"
+            print(f"{type_icon:<2} {item['type']:<8} {size:>10} {item['modified']:<25} {item['name']}")
+
+async def read_dir(self):
+    """List the contents of the current directory via MCP resource.
+    Retrieves and displays directory contents through the MCP server's directory resource.
+    """
+    try:
+        resource = await self.client.read_resource(f"dir://.")
+        dir_list = json.loads(resource[0].text)["items"]
+        self._print_dir_listing(dir_list)
+        return
+
+    except Exception as e:
+        print(f"Error reading directory: {e}")
