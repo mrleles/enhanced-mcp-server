@@ -21,8 +21,6 @@ Below is a presentation showcasing the features and architecture of the Enhanced
 ![Slide 6](slideshow/slide_6.png)
 ![Slide 7](slideshow/slide_7.png)
 
-For detailed information, please refer to the full presentation: [MCP Project Presentation](slideshow/mcp_project_presentation.pdf)
-
 ## Installation
 
 ```bash
